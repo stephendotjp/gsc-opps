@@ -1,15 +1,15 @@
 """
 Google Search Console API Client.
 Handles OAuth 2.0 authentication and data fetching from GSC API.
+Adapted for Vercel deployment with environment variables and database token storage.
 """
 
 import os
 import json
-import pickle
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -18,14 +18,30 @@ import time
 # OAuth scopes required for GSC API
 SCOPES = ['https://www.googleapis.com/auth/webmasters.readonly']
 
-# File paths
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CREDENTIALS_FILE = os.path.join(BASE_DIR, 'data', 'credentials.json')
-TOKEN_FILE = os.path.join(BASE_DIR, 'data', 'token.pickle')
-
 # GSC API limits
 MAX_ROWS_PER_REQUEST = 25000
 RATE_LIMIT_DELAY = 1  # seconds between API calls
+
+# Get credentials from environment variables
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
+GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'urn:ietf:wg:oauth:2.0:oob')
+
+
+def get_client_config() -> Dict:
+    """Get OAuth client configuration from environment variables."""
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        return None
+
+    return {
+        "installed": {
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": [GOOGLE_REDIRECT_URI]
+        }
+    }
 
 
 class GSCClient:
@@ -35,15 +51,29 @@ class GSCClient:
         self.service = None
         self.credentials = None
 
-    def is_credentials_file_present(self) -> bool:
-        """Check if credentials.json file exists."""
-        return os.path.exists(CREDENTIALS_FILE)
+    def is_credentials_configured(self) -> bool:
+        """Check if OAuth credentials are configured via environment variables."""
+        return bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
 
     def is_authenticated(self) -> bool:
         """Check if we have valid credentials."""
-        if os.path.exists(TOKEN_FILE):
-            with open(TOKEN_FILE, 'rb') as token:
-                self.credentials = pickle.load(token)
+        # Import here to avoid circular import
+        from database import get_oauth_token
+
+        try:
+            token_data = get_oauth_token()
+            if not token_data:
+                return False
+
+            token_info = json.loads(token_data)
+            self.credentials = Credentials(
+                token=token_info.get('token'),
+                refresh_token=token_info.get('refresh_token'),
+                token_uri=token_info.get('token_uri', 'https://oauth2.googleapis.com/token'),
+                client_id=GOOGLE_CLIENT_ID,
+                client_secret=GOOGLE_CLIENT_SECRET,
+                scopes=SCOPES
+            )
 
             if self.credentials and self.credentials.valid:
                 return True
@@ -57,29 +87,41 @@ class GSCClient:
                     print(f"Error refreshing token: {e}")
                     return False
 
+        except Exception as e:
+            print(f"Error loading credentials: {e}")
+            return False
+
         return False
 
     def _save_token(self):
-        """Save credentials token to file."""
-        os.makedirs(os.path.dirname(TOKEN_FILE), exist_ok=True)
-        with open(TOKEN_FILE, 'wb') as token:
-            pickle.dump(self.credentials, token)
+        """Save credentials token to database."""
+        from database import save_oauth_token
+
+        if self.credentials:
+            token_data = {
+                'token': self.credentials.token,
+                'refresh_token': self.credentials.refresh_token,
+                'token_uri': self.credentials.token_uri,
+                'expiry': self.credentials.expiry.isoformat() if self.credentials.expiry else None
+            }
+            save_oauth_token(json.dumps(token_data))
 
     def get_auth_url(self) -> Tuple[str, any]:
         """
         Get the authorization URL for OAuth flow.
         Returns tuple of (auth_url, flow_object).
         """
-        if not self.is_credentials_file_present():
-            raise FileNotFoundError(
-                "credentials.json not found. Please download OAuth credentials from "
-                "Google Cloud Console and save to data/credentials.json"
+        client_config = get_client_config()
+        if not client_config:
+            raise ValueError(
+                "OAuth credentials not configured. Set GOOGLE_CLIENT_ID and "
+                "GOOGLE_CLIENT_SECRET environment variables."
             )
 
-        flow = InstalledAppFlow.from_client_secrets_file(
-            CREDENTIALS_FILE,
+        flow = Flow.from_client_config(
+            client_config,
             scopes=SCOPES,
-            redirect_uri='urn:ietf:wg:oauth:2.0:oob'
+            redirect_uri=GOOGLE_REDIRECT_URI
         )
 
         auth_url, _ = flow.authorization_url(
@@ -103,22 +145,6 @@ class GSCClient:
         except Exception as e:
             print(f"Error authenticating: {e}")
             return False
-
-    def authenticate_local(self) -> bool:
-        """
-        Perform local OAuth flow (opens browser).
-        Use this for initial setup.
-        """
-        if not self.is_credentials_file_present():
-            raise FileNotFoundError(
-                "credentials.json not found. Please download OAuth credentials from "
-                "Google Cloud Console and save to data/credentials.json"
-            )
-
-        flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
-        self.credentials = flow.run_local_server(port=8090)
-        self._save_token()
-        return True
 
     def _get_service(self):
         """Get or create the GSC API service."""
@@ -322,8 +348,8 @@ class GSCClient:
 
     def logout(self):
         """Remove stored credentials and log out."""
-        if os.path.exists(TOKEN_FILE):
-            os.remove(TOKEN_FILE)
+        from database import delete_oauth_token
+        delete_oauth_token()
         self.credentials = None
         self.service = None
 

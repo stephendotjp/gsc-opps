@@ -315,7 +315,7 @@ def auth():
     """Authentication page."""
     client = get_client()
 
-    has_credentials = client.is_credentials_file_present()
+    has_credentials = client.is_credentials_configured()
     is_authenticated = client.is_authenticated()
 
     return render_template('auth.html',

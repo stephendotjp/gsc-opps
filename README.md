@@ -1,6 +1,10 @@
 # GSC Content Opportunity Analyzer
 
-A local web application that connects to Google Search Console API, analyzes SEO data, and identifies content opportunities. The app helps you find keywords to target, pages to expand, and new content to create.
+A web application that connects to Google Search Console API, analyzes SEO data, and identifies content opportunities. The app helps you find keywords to target, pages to expand, and new content to create.
+
+**Deployment Options:**
+- Local development with SQLite
+- Production deployment on Vercel with PostgreSQL
 
 ## Features
 
@@ -52,6 +56,66 @@ python app.py
 ```
 
 Open your browser to `http://localhost:5000`
+
+## Vercel Deployment
+
+### Prerequisites for Vercel
+
+- A [Vercel account](https://vercel.com)
+- A PostgreSQL database (Vercel Postgres, Neon, Supabase, or similar)
+- Google Cloud OAuth credentials configured for web application
+
+### Step 1: Set Up PostgreSQL Database
+
+1. Create a PostgreSQL database (recommended: [Vercel Postgres](https://vercel.com/docs/storage/vercel-postgres) or [Neon](https://neon.tech))
+2. Note your database connection URL (format: `postgresql://user:password@host:port/database`)
+
+### Step 2: Configure Google OAuth for Web
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Select your project (or create one following the setup below)
+3. Go to **APIs & Services** > **Credentials**
+4. Click **Create Credentials** > **OAuth client ID**
+5. Select **Web application** (not Desktop app)
+6. Add your Vercel domain to **Authorized redirect URIs**:
+   - `https://your-app.vercel.app/oauth-callback`
+   - For custom domains: `https://yourdomain.com/oauth-callback`
+7. Click **Create** and note the **Client ID** and **Client Secret**
+
+### Step 3: Deploy to Vercel
+
+1. Push your code to GitHub
+2. Import the repository in Vercel
+3. Configure environment variables in Vercel dashboard:
+
+```env
+# Required - Database
+POSTGRES_URL=postgresql://user:password@host:port/database
+
+# Required - Google OAuth
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+GOOGLE_REDIRECT_URI=https://your-app.vercel.app/oauth-callback
+
+# Required - Flask
+SECRET_KEY=generate-a-secure-random-string
+```
+
+4. Deploy!
+
+### Step 4: Initialize Database
+
+The database tables are automatically created on first request. Simply visit your deployed app URL.
+
+### Vercel Environment Variables Reference
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `POSTGRES_URL` | PostgreSQL connection string | Yes |
+| `GOOGLE_CLIENT_ID` | OAuth 2.0 Client ID | Yes |
+| `GOOGLE_CLIENT_SECRET` | OAuth 2.0 Client Secret | Yes |
+| `GOOGLE_REDIRECT_URI` | OAuth callback URL | Yes |
+| `SECRET_KEY` | Flask session secret | Yes |
 
 ## Google Cloud Console Setup
 
@@ -112,11 +176,14 @@ gsc-opps/
 ├── app.py                 # Main Flask application
 ├── gsc_client.py         # GSC API wrapper
 ├── analyzer.py           # Data analysis logic
-├── database.py           # SQLite database operations
+├── database.py           # PostgreSQL database operations
 ├── requirements.txt      # Python dependencies
 ├── README.md            # This file
 ├── .env.example         # Environment variables template
 ├── .gitignore           # Git ignore rules
+├── vercel.json          # Vercel deployment configuration
+├── api/
+│   └── index.py         # Vercel serverless entry point
 ├── templates/
 │   ├── base.html        # Base template
 │   ├── index.html       # Dashboard
@@ -136,9 +203,7 @@ gsc-opps/
 │   └── js/
 │       └── main.js
 └── data/
-    ├── database.db      # SQLite database (auto-created)
-    ├── credentials.json # OAuth credentials (you add this)
-    └── token.pickle     # Auth token (auto-created)
+    └── .gitkeep         # Placeholder for local development
 ```
 
 ## Usage Guide
@@ -228,12 +293,13 @@ PORT=5000
 
 ### Database
 
-Data is stored in SQLite at `data/database.db`. The database includes:
+Data is stored in PostgreSQL (for Vercel deployment). The database includes:
 - **search_data**: All GSC query data
 - **properties**: Tracked websites
 - **sync_history**: Data sync records
 - **keyword_clusters**: Generated clusters
 - **historical_snapshots**: Trend data
+- **oauth_tokens**: OAuth credentials (replaces local token.pickle)
 
 ## API Endpoints
 
@@ -248,18 +314,25 @@ Data is stored in SQLite at `data/database.db`. The database includes:
 
 ## Troubleshooting
 
-### "credentials.json not found"
+### "Google credentials not configured" (Vercel)
 
-Make sure you:
-1. Downloaded the OAuth credentials from Google Cloud Console
-2. Renamed the file to `credentials.json`
-3. Placed it in the `data/` folder
+Make sure you have set these environment variables in Vercel:
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI`
+
+### "Database connection failed" (Vercel)
+
+1. Check that `POSTGRES_URL` is correctly set
+2. Verify your database is accessible from Vercel's servers
+3. Ensure the connection string includes SSL if required
 
 ### "Authentication failed"
 
 1. Check that you added yourself as a test user in OAuth consent screen
 2. Make sure you selected the correct Google account
-3. Try clearing the `data/token.pickle` file and re-authenticating
+3. Verify the redirect URI matches exactly what's configured in Google Cloud Console
+4. For Vercel: ensure `GOOGLE_REDIRECT_URI` matches your deployed URL
 
 ### "No sites found"
 
@@ -278,7 +351,7 @@ Large sites may take several minutes. The app fetches up to 25,000 rows per API 
 
 1. Make sure you've synced data first
 2. Check the date range selector
-3. Verify data exists in the database: `sqlite3 data/database.db "SELECT COUNT(*) FROM search_data;"`
+3. Verify data exists in the database by checking the sync history in Settings
 
 ## Data Retention
 
@@ -289,10 +362,10 @@ Large sites may take several minutes. The app fetches up to 25,000 rows per API 
 
 ## Privacy & Security
 
-- All data is stored locally on your machine
-- OAuth tokens are stored in `data/token.pickle`
-- No data is sent to any external servers
-- Add `data/` to `.gitignore` to prevent committing sensitive files
+- For Vercel: Data is stored in your PostgreSQL database
+- OAuth tokens are securely stored in the database
+- Credentials are managed via environment variables
+- No data is shared with third parties beyond Google's API
 
 ## Contributing
 
