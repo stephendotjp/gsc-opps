@@ -6,6 +6,9 @@ Adapted for Vercel deployment with environment variables and database token stor
 
 import os
 import json
+import ssl
+import certifi
+import httplib2
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
 from google.oauth2.credentials import Credentials
@@ -14,6 +17,10 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import time
+
+# Configure SSL certificates for serverless environments
+os.environ['SSL_CERT_FILE'] = certifi.where()
+os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 
 # OAuth scopes required for GSC API
 SCOPES = ['https://www.googleapis.com/auth/webmasters.readonly']
@@ -146,12 +153,42 @@ class GSCClient:
             print(f"Error authenticating: {e}")
             return False
 
+    def authenticate_with_code_stateless(self, code: str) -> bool:
+        """
+        Complete OAuth flow with authorization code without needing the original flow.
+        This is used for serverless environments where the flow can't be stored in memory.
+        Returns True if successful.
+        """
+        try:
+            client_config = get_client_config()
+            if not client_config:
+                raise ValueError("OAuth credentials not configured")
+
+            flow = Flow.from_client_config(
+                client_config,
+                scopes=SCOPES,
+                redirect_uri=GOOGLE_REDIRECT_URI
+            )
+            flow.fetch_token(code=code)
+            self.credentials = flow.credentials
+            self._save_token()
+            return True
+        except Exception as e:
+            print(f"Error authenticating: {e}")
+            return False
+
     def _get_service(self):
         """Get or create the GSC API service."""
         if self.service is None:
             if not self.is_authenticated():
                 raise Exception("Not authenticated. Please authenticate first.")
-            self.service = build('searchconsole', 'v1', credentials=self.credentials)
+            # Use httplib2 with proper SSL certificates for serverless environments
+            http = httplib2.Http(ca_certs=certifi.where())
+            self.service = build(
+                'searchconsole', 'v1',
+                credentials=self.credentials,
+                cache_discovery=False  # Disable cache for serverless
+            )
         return self.service
 
     def get_sites(self) -> List[Dict]:
