@@ -346,9 +346,39 @@ def auth_start():
         return redirect(url_for('auth'))
 
 
+@app.route('/oauth-callback')
+def oauth_callback():
+    """Handle OAuth callback redirect from Google."""
+    code = request.args.get('code')
+    error = request.args.get('error')
+    flow_id = session.get('oauth_flow_id')
+
+    if error:
+        flash(f'Authentication failed: {error}', 'error')
+        return redirect(url_for('auth'))
+
+    if not code:
+        flash('No authorization code received.', 'error')
+        return redirect(url_for('auth'))
+
+    if not flow_id or flow_id not in oauth_flows:
+        flash('Authentication session expired. Please try again.', 'error')
+        return redirect(url_for('auth'))
+
+    client = get_client()
+    flow = oauth_flows.pop(flow_id)
+
+    if client.authenticate_with_code(flow, code):
+        flash('Successfully authenticated with Google Search Console!', 'success')
+        return redirect(url_for('settings'))
+    else:
+        flash('Authentication failed. Please try again.', 'error')
+        return redirect(url_for('auth'))
+
+
 @app.route('/auth/callback', methods=['POST'])
 def auth_callback():
-    """Handle OAuth callback with authorization code."""
+    """Handle OAuth callback with authorization code (manual entry fallback)."""
     code = request.form.get('code', '').strip()
     flow_id = session.get('oauth_flow_id')
 
