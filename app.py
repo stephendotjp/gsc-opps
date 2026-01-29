@@ -351,7 +351,6 @@ def oauth_callback():
     """Handle OAuth callback redirect from Google."""
     code = request.args.get('code')
     error = request.args.get('error')
-    flow_id = session.get('oauth_flow_id')
 
     if error:
         flash(f'Authentication failed: {error}', 'error')
@@ -361,14 +360,9 @@ def oauth_callback():
         flash('No authorization code received.', 'error')
         return redirect(url_for('auth'))
 
-    if not flow_id or flow_id not in oauth_flows:
-        flash('Authentication session expired. Please try again.', 'error')
-        return redirect(url_for('auth'))
-
+    # Use stateless authentication for serverless environments
     client = get_client()
-    flow = oauth_flows.pop(flow_id)
-
-    if client.authenticate_with_code(flow, code):
+    if client.authenticate_with_code_stateless(code):
         flash('Successfully authenticated with Google Search Console!', 'success')
         return redirect(url_for('settings'))
     else:

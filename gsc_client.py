@@ -146,6 +146,30 @@ class GSCClient:
             print(f"Error authenticating: {e}")
             return False
 
+    def authenticate_with_code_stateless(self, code: str) -> bool:
+        """
+        Complete OAuth flow with authorization code without needing the original flow.
+        This is used for serverless environments where the flow can't be stored in memory.
+        Returns True if successful.
+        """
+        try:
+            client_config = get_client_config()
+            if not client_config:
+                raise ValueError("OAuth credentials not configured")
+
+            flow = Flow.from_client_config(
+                client_config,
+                scopes=SCOPES,
+                redirect_uri=GOOGLE_REDIRECT_URI
+            )
+            flow.fetch_token(code=code)
+            self.credentials = flow.credentials
+            self._save_token()
+            return True
+        except Exception as e:
+            print(f"Error authenticating: {e}")
+            return False
+
     def _get_service(self):
         """Get or create the GSC API service."""
         if self.service is None:
