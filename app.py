@@ -329,8 +329,8 @@ def auth_start():
     """Start OAuth flow."""
     client = get_client()
 
-    if not client.is_credentials_file_present():
-        flash('Please add credentials.json to the data folder first.', 'error')
+    if not client.is_credentials_configured():
+        flash('Google OAuth credentials not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables.', 'error')
         return redirect(url_for('auth'))
 
     try:
