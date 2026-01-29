@@ -4,7 +4,7 @@ A web application that connects to Google Search Console API, analyzes SEO data,
 
 **Deployment Options:**
 - Local development with SQLite
-- Production deployment on Vercel with PostgreSQL
+- Production deployment on Railway with PostgreSQL
 
 ## Features
 
@@ -57,57 +57,62 @@ python app.py
 
 Open your browser to `http://localhost:5000`
 
-## Vercel Deployment
+## Railway Deployment
 
-### Prerequisites for Vercel
+Railway is the recommended platform for this app - it provides persistent servers with no timeout limits, making it ideal for data processing tasks.
 
-- A [Vercel account](https://vercel.com)
-- A PostgreSQL database (Vercel Postgres, Neon, Supabase, or similar)
+### Prerequisites for Railway
+
+- A [Railway account](https://railway.app) (free tier available)
 - Google Cloud OAuth credentials configured for web application
 
-### Step 1: Set Up PostgreSQL Database
+### Step 1: Deploy to Railway
 
-1. Create a PostgreSQL database (recommended: [Vercel Postgres](https://vercel.com/docs/storage/vercel-postgres) or [Neon](https://neon.tech))
-2. Note your database connection URL (format: `postgresql://user:password@host:port/database`)
+1. Push your code to GitHub
+2. Go to [Railway](https://railway.app) and click **New Project**
+3. Select **Deploy from GitHub repo**
+4. Choose your repository
 
-### Step 2: Configure Google OAuth for Web
+### Step 2: Add PostgreSQL Database
+
+1. In your Railway project, click **New** → **Database** → **PostgreSQL**
+2. Railway will automatically create `DATABASE_URL` environment variable
+3. Add a new variable: `POSTGRES_URL` = `${{Postgres.DATABASE_URL}}`
+
+### Step 3: Configure Google OAuth for Web
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Select your project (or create one following the setup below)
 3. Go to **APIs & Services** > **Credentials**
 4. Click **Create Credentials** > **OAuth client ID**
 5. Select **Web application** (not Desktop app)
-6. Add your Vercel domain to **Authorized redirect URIs**:
-   - `https://your-app.vercel.app/oauth-callback`
+6. Add your Railway domain to **Authorized redirect URIs**:
+   - `https://your-app.up.railway.app/oauth-callback`
    - For custom domains: `https://yourdomain.com/oauth-callback`
 7. Click **Create** and note the **Client ID** and **Client Secret**
 
-### Step 3: Deploy to Vercel
+### Step 4: Set Environment Variables
 
-1. Push your code to GitHub
-2. Import the repository in Vercel
-3. Configure environment variables in Vercel dashboard:
+In Railway dashboard, go to your service → **Variables** and add:
 
 ```env
-# Required - Database
-POSTGRES_URL=postgresql://user:password@host:port/database
-
-# Required - Google OAuth
+# Google OAuth
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-client-secret
-GOOGLE_REDIRECT_URI=https://your-app.vercel.app/oauth-callback
+GOOGLE_REDIRECT_URI=https://your-app.up.railway.app/oauth-callback
 
-# Required - Flask
+# Flask
 SECRET_KEY=generate-a-secure-random-string
+
+# Database (reference the PostgreSQL service)
+POSTGRES_URL=${{Postgres.DATABASE_URL}}
 ```
 
-4. Deploy!
+### Step 5: Deploy
 
-### Step 4: Initialize Database
+Railway will automatically deploy when you push to GitHub. The database tables are created automatically on first request.
 
-The database tables are automatically created on first request. Simply visit your deployed app URL.
-
-### Vercel Environment Variables Reference
+### Railway Environment Variables Reference
 
 | Variable | Description | Required |
 |----------|-------------|----------|
@@ -181,9 +186,8 @@ gsc-opps/
 ├── README.md            # This file
 ├── .env.example         # Environment variables template
 ├── .gitignore           # Git ignore rules
-├── vercel.json          # Vercel deployment configuration
-├── api/
-│   └── index.py         # Vercel serverless entry point
+├── Procfile             # Railway/Heroku process configuration
+├── railway.json         # Railway deployment configuration
 ├── templates/
 │   ├── base.html        # Base template
 │   ├── index.html       # Dashboard
@@ -293,7 +297,7 @@ PORT=5000
 
 ### Database
 
-Data is stored in PostgreSQL (for Vercel deployment). The database includes:
+Data is stored in PostgreSQL (for Railway deployment). The database includes:
 - **search_data**: All GSC query data
 - **properties**: Tracked websites
 - **sync_history**: Data sync records
@@ -314,17 +318,17 @@ Data is stored in PostgreSQL (for Vercel deployment). The database includes:
 
 ## Troubleshooting
 
-### "Google credentials not configured" (Vercel)
+### "Google credentials not configured" (Railway)
 
-Make sure you have set these environment variables in Vercel:
+Make sure you have set these environment variables in Railway:
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `GOOGLE_REDIRECT_URI`
 
-### "Database connection failed" (Vercel)
+### "Database connection failed" (Railway)
 
-1. Check that `POSTGRES_URL` is correctly set
-2. Verify your database is accessible from Vercel's servers
+1. Check that `POSTGRES_URL` is correctly set (use `${{Postgres.DATABASE_URL}}` to reference Railway's PostgreSQL)
+2. Verify the PostgreSQL service is running in your Railway project
 3. Ensure the connection string includes SSL if required
 
 ### "Authentication failed"
@@ -332,7 +336,7 @@ Make sure you have set these environment variables in Vercel:
 1. Check that you added yourself as a test user in OAuth consent screen
 2. Make sure you selected the correct Google account
 3. Verify the redirect URI matches exactly what's configured in Google Cloud Console
-4. For Vercel: ensure `GOOGLE_REDIRECT_URI` matches your deployed URL
+4. For Railway: ensure `GOOGLE_REDIRECT_URI` matches your deployed URL (e.g., `https://your-app.up.railway.app/oauth-callback`)
 
 ### "No sites found"
 
@@ -362,7 +366,7 @@ Large sites may take several minutes. The app fetches up to 25,000 rows per API 
 
 ## Privacy & Security
 
-- For Vercel: Data is stored in your PostgreSQL database
+- For Railway: Data is stored in your PostgreSQL database
 - OAuth tokens are securely stored in the database
 - Credentials are managed via environment variables
 - No data is shared with third parties beyond Google's API
