@@ -6,6 +6,9 @@ Adapted for Vercel deployment with environment variables and database token stor
 
 import os
 import json
+import ssl
+import certifi
+import httplib2
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
 from google.oauth2.credentials import Credentials
@@ -14,6 +17,10 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import time
+
+# Configure SSL certificates for serverless environments
+os.environ['SSL_CERT_FILE'] = certifi.where()
+os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 
 # OAuth scopes required for GSC API
 SCOPES = ['https://www.googleapis.com/auth/webmasters.readonly']
@@ -175,7 +182,13 @@ class GSCClient:
         if self.service is None:
             if not self.is_authenticated():
                 raise Exception("Not authenticated. Please authenticate first.")
-            self.service = build('searchconsole', 'v1', credentials=self.credentials)
+            # Use httplib2 with proper SSL certificates for serverless environments
+            http = httplib2.Http(ca_certs=certifi.where())
+            self.service = build(
+                'searchconsole', 'v1',
+                credentials=self.credentials,
+                cache_discovery=False  # Disable cache for serverless
+            )
         return self.service
 
     def get_sites(self) -> List[Dict]:
