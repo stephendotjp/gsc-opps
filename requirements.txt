@@ -1,0 +1,26 @@
+# Flask web framework
+Flask==3.0.0
+Werkzeug==3.0.1
+
+# Google API libraries
+google-auth==2.25.2
+google-auth-oauthlib==1.2.0
+google-auth-httplib2==0.2.0
+google-api-python-client==2.111.0
+
+# Data processing
+pandas==2.1.4
+numpy==1.26.2
+
+# Database
+SQLAlchemy==2.0.23
+
+# Environment variables
+python-dotenv==1.0.0
+
+# HTTP requests (for token refresh)
+requests==2.31.0
+httplib2==0.22.0
+
+# Date handling
+python-dateutil==2.8.2

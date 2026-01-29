@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - GSC Analyzer{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-gray-900">Settings</h1>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Site Selection -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Select Website</h3>
+                <p class="mt-1 text-sm text-gray-500">Choose which property to analyze</p>
+            </div>
+            <div class="px-4 py-5 sm:px-6">
+                {% if sites %}
+                <form action="{{ url_for('select_site') }}" method="POST">
+                    <div class="space-y-4">
+                        {% for site in sites %}
+                        <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50
+                            {% if site.siteUrl == current_site %}border-primary bg-indigo-50{% else %}border-gray-200{% endif %}">
+                            <input type="radio" name="site_url" value="{{ site.siteUrl }}"
+                                   class="h-4 w-4 text-primary focus:ring-primary border-gray-300"
+                                   {% if site.siteUrl == current_site %}checked{% endif %}>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">{{ site.siteUrl }}</p>
+                                <p class="text-xs text-gray-500">{{ site.permissionLevel }}</p>
+                            </div>
+                            {% if site.siteUrl == current_site %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary text-white">
+                                Selected
+                            </span>
+                            {% endif %}
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <div class="mt-4">
+                        <button type="submit"
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90">
+                            Select Site
+                        </button>
+                    </div>
+                </form>
+                {% else %}
+                <div class="text-center py-6">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-500">No sites found in your Search Console account.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Data Sync -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Data Synchronization</h3>
+                <p class="mt-1 text-sm text-gray-500">Sync your Search Console data</p>
+            </div>
+            <div class="px-4 py-5 sm:px-6">
+                {% if current_site %}
+                <div class="space-y-4">
+                    <!-- Last Sync Info -->
+                    {% if last_sync %}
+                    <div class="rounded-md bg-gray-50 p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-gray-700">
+                                    <strong>Last sync:</strong> {{ last_sync.completed_at }}
+                                </p>
+                                <p class="text-sm text-gray-500">
+                                    {{ last_sync.rows_fetched|format_number }} rows fetched
+                                    ({{ last_sync.start_date }} to {{ last_sync.end_date }})
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if date_range[0] %}
+                    <div class="rounded-md bg-blue-50 p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-blue-700">
+                                    <strong>Data range:</strong> {{ date_range[0] }} to {{ date_range[1] }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Sync Buttons -->
+                    <div class="flex flex-col space-y-3">
+                        <button onclick="syncData('recent')"
+                                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            Sync Recent Data (Last 90 days)
+                        </button>
+
+                        <button onclick="syncData('full')"
+                                class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                            </svg>
+                            Full Sync (Last 16 months)
+                        </button>
+                    </div>
+
+                    <p class="text-xs text-gray-500">
+                        Full sync fetches all available historical data. This may take several minutes for large sites.
+                    </p>
+                </div>
+                {% else %}
+                <div class="text-center py-6">
+                    <p class="text-sm text-gray-500">Please select a site first to sync data.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Account Info -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Account</h3>
+                <p class="mt-1 text-sm text-gray-500">Manage your Google account connection</p>
+            </div>
+            <div class="px-4 py-5 sm:px-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                                <svg class="h-6 w-6 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-900">Google Account Connected</p>
+                            <p class="text-xs text-gray-500">Access to Search Console API granted</p>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('auth_logout') }}"
+                       class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Disconnect
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Help & Support</h3>
+                <p class="mt-1 text-sm text-gray-500">Need assistance?</p>
+            </div>
+            <div class="px-4 py-5 sm:px-6">
+                <div class="prose prose-sm max-w-none">
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li>
+                            <strong>No data showing?</strong> Make sure to sync data first using the buttons above.
+                        </li>
+                        <li>
+                            <strong>Site not listed?</strong> Ensure you have access to the property in Google Search Console.
+                        </li>
+                        <li>
+                            <strong>Sync taking too long?</strong> Large sites with many keywords may take several minutes to sync.
+                        </li>
+                        <li>
+                            <strong>Data delay:</strong> Google Search Console data has a 2-3 day delay.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div id="loading-modal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+        <div class="flex items-center">
+            <svg class="animate-spin h-8 w-8 text-primary mr-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <div>
+                <p class="text-lg font-medium text-gray-900" id="loading-title">Syncing Data...</p>
+                <p class="text-sm text-gray-500" id="loading-message">This may take a few moments.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function syncData(type) {
+    const modal = document.getElementById('loading-modal');
+    const title = document.getElementById('loading-title');
+    const message = document.getElementById('loading-message');
+
+    title.textContent = type === 'full' ? 'Full Sync in Progress...' : 'Syncing Recent Data...';
+    message.textContent = type === 'full'
+        ? 'This may take several minutes for large sites.'
+        : 'This should complete in a moment.';
+
+    modal.classList.remove('hidden');
+
+    fetch('/api/sync', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ type: type })
+    })
+    .then(response => response.json())
+    .then(data => {
+        modal.classList.add('hidden');
+        if (data.success) {
+            alert('Sync complete! Fetched ' + data.rows_fetched + ' rows from ' + data.start_date + ' to ' + data.end_date);
+            window.location.reload();
+        } else {
+            alert('Sync failed: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        modal.classList.add('hidden');
+        alert('Sync failed: ' + error.message);
+    });
+}
+</script>
+{% endblock %}
