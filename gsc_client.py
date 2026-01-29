@@ -277,3 +277,25 @@ class GSCClient:
             dimensions=dimensions,
             progress_callback=progress_callback
         )
+
+
+# Singleton client instance
+_client_instance = None
+
+
+def get_client() -> GSCClient:
+    """Get or create the singleton GSCClient instance."""
+    global _client_instance
+    if _client_instance is None:
+        _client_instance = GSCClient()
+    return _client_instance
+
+
+def get_available_date_range() -> Tuple[str, str]:
+    """
+    Get the available date range for GSC data.
+    GSC has a 3-day delay and provides up to 16 months of data.
+    """
+    end_date = datetime.now() - timedelta(days=3)
+    start_date = end_date - timedelta(days=16 * 30)  # Approximately 16 months
+    return start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
