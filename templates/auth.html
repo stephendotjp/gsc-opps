@@ -75,22 +75,17 @@
                         <strong>Create OAuth Credentials</strong>
                         <p>Go to "APIs & Services" > "Credentials" > "Create Credentials" > "OAuth client ID".</p>
                         <ul class="mt-2">
-                            <li>Application type: <strong>Web application</strong></li>
-                            <li>Authorized redirect URIs: <strong>https://your-domain.com/oauth-callback</strong></li>
+                            <li>Application type: <strong>Desktop app</strong></li>
+                            <li>Name: <strong>GSC Analyzer</strong></li>
                         </ul>
                     </li>
                     <li>
-                        <strong>Set Environment Variables</strong>
-                        <p>Add these environment variables in your Railway dashboard:</p>
-                        <ul class="mt-2 text-xs font-mono">
-                            <li><code class="bg-gray-100 px-1 rounded">GOOGLE_CLIENT_ID</code></li>
-                            <li><code class="bg-gray-100 px-1 rounded">GOOGLE_CLIENT_SECRET</code></li>
-                            <li><code class="bg-gray-100 px-1 rounded">GOOGLE_REDIRECT_URI</code></li>
-                        </ul>
+                        <strong>Download credentials.json</strong>
+                        <p>Click "Download JSON" and save the file as <code class="bg-gray-100 px-1 rounded">credentials.json</code> in the <code class="bg-gray-100 px-1 rounded">data/</code> folder.</p>
                     </li>
                     <li>
-                        <strong>Redeploy</strong>
-                        <p>After setting environment variables, trigger a new deployment.</p>
+                        <strong>Refresh this page</strong>
+                        <p>Once the file is in place, refresh this page to continue.</p>
                     </li>
                 </ol>
             </div>

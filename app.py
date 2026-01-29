@@ -315,7 +315,7 @@ def auth():
     """Authentication page."""
     client = get_client()
 
-    has_credentials = client.is_credentials_configured()
+    has_credentials = client.is_credentials_file_present()
     is_authenticated = client.is_authenticated()
 
     return render_template('auth.html',
@@ -329,8 +329,8 @@ def auth_start():
     """Start OAuth flow."""
     client = get_client()
 
-    if not client.is_credentials_configured():
-        flash('Google OAuth credentials not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables.', 'error')
+    if not client.is_credentials_file_present():
+        flash('Please add credentials.json to the data folder first.', 'error')
         return redirect(url_for('auth'))
 
     try:
